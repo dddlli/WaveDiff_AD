@@ -1,0 +1,1 @@
+python main.py --dataset SWaT --epochs 10 --batch_size 16 --model_dim 256 --wavelet_level 3 --hht_imfs 5 --fusion_type attention
