@@ -26,8 +26,8 @@ if __name__ == '__main__':
     parser.add_argument('--window_size', type=int, default=64, help='Size of sliding window')
 
     # Model architecture
-    parser.add_argument('--model_dim', type=int, default=512, help='Dimension of model hidden layers')
-    parser.add_argument('--ff_dim', type=int, default=2048, help='Dimension of feedforward network')
+    parser.add_argument('--model_dim', type=int, default=128, help='Dimension of model hidden layers')
+    parser.add_argument('--ff_dim', type=int, default=512, help='Dimension of feedforward network')
     parser.add_argument('--atten_dim', type=int, default=64, help='Dimension of attention')
     parser.add_argument('--block_num', type=int, default=2, help='Number of transformer blocks')
     parser.add_argument('--head_num', type=int, default=8, help='Number of attention heads')

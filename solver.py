@@ -15,7 +15,8 @@ from utils.evaluate import evaluate
 
 class Solver:
     """
-    Experiment class for training and evaluation of WHDiff model
+    Experiment manager for training and evaluating the anomaly detection model.
+    Handles data loading, model training, and evaluation.
     """
     def __init__(self, config):
         self.__dict__.update(config)
@@ -27,7 +28,7 @@ class Solver:
 
     def _get_data(self):
         """
-        Prepare datasets and dataloaders
+        Prepare datasets and dataloaders for training and evaluation
         """
         data = getData(
             path=self.data_dir,
@@ -40,7 +41,7 @@ class Solver:
         self.time_num = data['train_time'].shape[1]
         print('\nData shape: ')
         for k, v in data.items():
-            print(k, ': ', v.shape)
+            print(f"{k}: {v.shape}")
 
         self.train_set = Dataset(
             data=data['train_data'],
@@ -78,7 +79,7 @@ class Solver:
 
     def _get_model(self):
         """
-        Initialize model, optimizer and early stopping
+        Initialize model, optimizer and early stopping mechanism
         """
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print('\nDevice:', self.device)
@@ -103,22 +104,26 @@ class Solver:
             t=self.t
         ).to(self.device)
         
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=1e-4)
+        # Use reduced learning rate to prevent large losses
+        reduced_lr = self.lr * 0.1
+        print(f"Using reduced learning rate: {reduced_lr} (original: {self.lr})")
+        
+        self.optimizer = optim.Adam(self.model.parameters(), lr=reduced_lr, weight_decay=1e-4)
         self.early_stopping = EarlyStop(patience=self.patience, path=self.model_dir + self.dataset + '_model.pkl')
         self.criterion = nn.MSELoss(reduction='mean')
 
     def _process_one_batch(self, batch_data, batch_time, batch_stable, train=True):
         """
-        Process one batch of data
+        Process one batch of data for training or evaluation
         
         Args:
-            batch_data: Input data
-            batch_time: Time features
-            batch_stable: Stable components (for supervised loss)
+            batch_data: Input data batch
+            batch_time: Time features batch
+            batch_stable: Stable components batch
             train: Whether in training mode
             
         Returns:
-            Loss if training, or components if evaluation
+            Loss if training, or high/low/recon components if evaluation
         """
         batch_data = batch_data.float().to(self.device)
         batch_time = batch_time.float().to(self.device)
@@ -133,18 +138,26 @@ class Solver:
 
     def train(self):
         """
-        Train the model
+        Train the model with gradient clipping and loss monitoring
         """
         for e in range(self.epochs):
             start = time()
 
             self.model.train()
             train_loss = []
+            
             for (batch_data, batch_time, batch_stable, _) in tqdm(self.train_loader):
                 self.optimizer.zero_grad()
                 loss = self._process_one_batch(batch_data, batch_time, batch_stable, train=True)
                 train_loss.append(loss.item())
+                
+                # Calculate gradients
                 loss.backward()
+                
+                # Apply gradient clipping to prevent exploding gradients
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                
+                # Update parameters
                 self.optimizer.step()
 
             with torch.no_grad():
@@ -156,7 +169,7 @@ class Solver:
 
             train_loss, valid_loss = np.average(train_loss), np.average(valid_loss)
             end = time()
-            print(f'Epoch: {e} || Train Loss: {train_loss:.6f} Valid Loss: {valid_loss:.6f} || Cost: {end - start:.4f}')
+            print(f'Epoch: {e} || Train Loss: {train_loss:.6f} Valid Loss: {valid_loss:.6f} || Cost: {end - start:.4f}s')
 
             self.early_stopping(valid_loss, self.model)
             if self.early_stopping.early_stop:

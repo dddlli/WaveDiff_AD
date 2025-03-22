@@ -75,8 +75,8 @@ ANOMALY_PARAMS = {
         'PSM': 1.0,
         'SWaT': 0.5
     },
-    'high_freq_weight': 0.6,  # Weight for high frequency error in anomaly score
-    'low_freq_weight': 0.4    # Weight for low frequency error in anomaly score
+    'high_freq_weight': 0.5,  # Weight for high frequency error in anomaly score
+    'low_freq_weight': 0.5    # Weight for low frequency error in anomaly score
 }
 
 # Default training parameters
